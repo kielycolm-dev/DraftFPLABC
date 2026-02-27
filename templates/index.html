@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Draft League Scoreboard</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #999;
+            padding: 6px 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #eee;
+        }
+        .winner {
+            background-color: #c8f7c5; /* light green */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Draft League Scoreboard</h1>
+    <table id="leagueTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <script>
+        fetch("/api/scores")
+            .then(res => res.json())
+            .then(data => {
+                const tableHead = document.getElementById("tableHead");
+                const tableBody = document.getElementById("tableBody");
+
+                // Determine gameweeks from first row
+                const gameweeks = Object.keys(data[0]).filter(k => k !== "Team" && k !== "Total");
+
+                // Build header
+                let headerHTML = "<tr><th>Team</th>";
+                gameweeks.forEach(gw => { headerHTML += `<th>GW ${gw}</th>` });
+                headerHTML += "<th>Total</th></tr>";
+                tableHead.innerHTML = headerHTML;
+
+                // Sort data by Total descending
+                data.sort((a,b) => b.Total - a.Total);
+
+                // Determine weekly winners
+                let winnersByGW = {};
+                gameweeks.forEach(gw => {
+                    let maxPoints = Math.max(...data.map(d => d[gw]));
+                    winnersByGW[gw] = data.filter(d => d[gw] === maxPoints).map(d => d.Team);
+                });
+
+                // Build body
+                let bodyHTML = "";
+                data.forEach(team => {
+                    bodyHTML += `<tr><td>${team.Team}</td>`;
+                    gameweeks.forEach(gw => {
+                        let cls = winnersByGW[gw].includes(team.Team) ? "winner" : "";
+                        bodyHTML += `<td class="${cls}">${team[gw]}</td>`;
+                    });
+                    bodyHTML += `<td>${team.Total}</td></tr>`;
+                });
+                tableBody.innerHTML = bodyHTML;
+            });
+    </script>
+</body>
+</html>
