@@ -112,7 +112,11 @@ def api_scores():
 
     pivot = df.pivot(index="Team", columns="Gameweek", values="Points").fillna(0)
 
+    # Convert column names to strings so JSON serialization works
+    pivot.columns = pivot.columns.astype(str)
+
     pivot["Total"] = pivot.sum(axis=1)
+
 
     pivot["Weekly Wins"] = pivot.index.map(weekly_wins)
     pivot["Net $"] = pivot.index.map(money_tracker)
