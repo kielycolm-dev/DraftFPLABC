@@ -70,8 +70,8 @@ tr:nth-child(even){
 background:#1f2a3d;
 }
 
-.highlight{
-background:#065f46 !important;
+.gwWinner{
+background:#16a34a;
 font-weight:bold;
 }
 
@@ -123,13 +123,22 @@ margin-top:30px;
 
 <div class="chart-container">
 
+<h2>Season Points</h2>
 <canvas id="pointsChart"></canvas>
+
+</div>
+
+<div class="chart-container">
+
+<h2>Season Race</h2>
+<canvas id="raceChart"></canvas>
 
 </div>
 
 <script>
 
 let chartInstance;
+let raceChart;
 
 async function loadData(){
 
@@ -138,7 +147,8 @@ const data = await res.json();
 
 buildTable(data);
 buildDashboard(data);
-buildChart(data);
+buildPointsChart(data);
+buildRaceChart(data);
 
 }
 
@@ -184,9 +194,19 @@ const table = document.getElementById("leagueTable");
 
 const headers = Object.keys(data[0]);
 
+const gwColumns = headers.filter(h => !isNaN(h));
+
+let gwMax = {};
+
+gwColumns.forEach(gw => {
+
+gwMax[gw] = Math.max(...data.map(t => t[gw]));
+
+});
+
 let thead = "<tr>";
 
-headers.forEach(h=>{
+headers.forEach(h => {
 
 thead += "<th>" + h + "</th>";
 
@@ -198,13 +218,24 @@ table.querySelector("thead").innerHTML = thead;
 
 let rows = "";
 
-data.forEach((team,i)=>{
+data.forEach(team => {
 
-rows += "<tr class='" + (i==0 ? "highlight": "") + "'>";
+rows += "<tr>";
 
-headers.forEach(h=>{
+headers.forEach(h => {
 
-rows += "<td>" + team[h] + "</td>";
+let value = team[h];
+let cellClass = "";
+let star = "";
+
+if(gwColumns.includes(h) && value == gwMax[h]){
+
+cellClass = "gwWinner";
+star = " ⭐";
+
+}
+
+rows += "<td class='"+cellClass+"'>" + value + star + "</td>";
 
 });
 
@@ -216,7 +247,7 @@ table.querySelector("tbody").innerHTML = rows;
 
 }
 
-function buildChart(data){
+function buildPointsChart(data){
 
 const labels = data.map(t=>t.Team);
 const totals = data.map(t=>t.Total);
@@ -240,12 +271,48 @@ data:totals
 options:{
 plugins:{
 legend:{display:false}
-},
-scales:{
-y:{
-beginAtZero:true
 }
 }
+
+});
+
+}
+
+function buildRaceChart(data){
+
+const gwColumns = Object.keys(data[0]).filter(x=>!isNaN(x));
+
+let datasets = data.map(team => {
+
+let cumulative = 0;
+let points = [];
+
+gwColumns.forEach(gw => {
+
+cumulative += team[gw];
+points.push(cumulative);
+
+});
+
+return {
+label: team.Team,
+data: points,
+fill:false
+};
+
+});
+
+if(raceChart){
+raceChart.destroy();
+}
+
+raceChart = new Chart(document.getElementById("raceChart"),{
+
+type:"line",
+
+data:{
+labels:gwColumns,
+datasets:datasets
 }
 
 });
@@ -254,8 +321,7 @@ beginAtZero:true
 
 loadData();
 
-// auto refresh every 5 minutes
-setInterval(loadData, 300000);
+setInterval(loadData,300000);
 
 </script>
 
