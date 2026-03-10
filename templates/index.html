@@ -10,68 +10,68 @@
 <style>
 
 body{
-font-family: Arial, sans-serif;
-background:#0f172a;
-color:white;
-margin:0;
-padding:20px;
+    font-family: Arial, sans-serif;
+    background:#0f172a;
+    color:white;
+    margin:0;
+    padding:20px;
 }
 
 h1{
-text-align:center;
-margin-bottom:30px;
+    text-align:center;
+    margin-bottom:30px;
 }
 
 .dashboard{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-gap:20px;
-margin-bottom:30px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+    margin-bottom:30px;
 }
 
 .card{
-background:#1e293b;
-padding:20px;
-border-radius:10px;
-text-align:center;
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    text-align:center;
 }
 
 .card h2{
-margin:0;
-font-size:18px;
-color:#94a3b8;
+    margin:0;
+    font-size:18px;
+    color:#94a3b8;
 }
 
 .card p{
-font-size:28px;
-margin-top:10px;
+    font-size:28px;
+    margin-top:10px;
 }
 
 table{
-width:100%;
-border-collapse:collapse;
-background:#1e293b;
+    width:100%;
+    border-collapse:collapse;
+    background:#1e293b;
 }
 
 th,td{
-padding:10px;
-text-align:center;
+    padding:10px;
+    text-align:center;
 }
 
 th{
-background:#334155;
+    background:#334155;
 }
 
 .gwWinner{
-background:#16a34a;
-font-weight:bold;
+    background:#16a34a;
+    font-weight:bold;
 }
 
 .chart-container{
-background:#1e293b;
-padding:20px;
-border-radius:10px;
-margin-top:30px;
+    background:#1e293b;
+    padding:20px;
+    border-radius:10px;
+    margin-top:30px;
 }
 
 </style>
@@ -80,50 +80,50 @@ margin-top:30px;
 
 <body>
 
-<h1>🏆 ABC Draft League Prize Tracker</h1>
+<h1>🏆 Draft League Prize Tracker</h1>
 
 <div class="dashboard">
 
-<div class="card">
-<h2>Leader</h2>
-<p id="leader"></p>
-</div>
+    <div class="card">
+        <h2>Leader</h2>
+        <p id="leader"></p>
+    </div>
 
-<div class="card">
-<h2>Money Leader</h2>
-<p id="moneyLeader"></p>
-</div>
+    <div class="card">
+        <h2>Money Leader</h2>
+        <p id="moneyLeader"></p>
+    </div>
 
-<div class="card">
-<h2>🔥 Biggest Contributor</h2>
-<p id="bestScore"></p>
-</div>
+    <div class="card">
+        <h2>🔥 Biggest Contributor</h2>
+        <p id="bestScore"></p>
+    </div>
 
-<div class="card">
-<h2>Most Weekly Wins</h2>
-<p id="mostWins"></p>
-</div>
+    <div class="card">
+        <h2>Most Weekly Wins</h2>
+        <p id="mostWins"></p>
+    </div>
 
 </div>
 
 <table id="leagueTable">
 
-<thead></thead>
-<tbody></tbody>
+    <thead></thead>
+    <tbody></tbody>
 
 </table>
 
 <div class="chart-container">
 
-<h2>Season Points</h2>
-<canvas id="pointsChart"></canvas>
+    <h2>Season Points</h2>
+    <canvas id="pointsChart"></canvas>
 
 </div>
 
 <div class="chart-container">
 
-<h2>Season Race</h2>
-<canvas id="raceChart"></canvas>
+    <h2>Season Race</h2>
+    <canvas id="raceChart"></canvas>
 
 </div>
 
@@ -136,181 +136,167 @@ let raceChart
 
 async function loadData(){
 
-const res=await fetch(API_URL)
-const data=await res.json()
+    const res=await fetch(API_URL)
+    const data=await res.json()
 
-data.forEach(team=>{
-team["Entry Fee"]=60
-})
+    // Map backend keys to display columns and add Entry Fee
+    data.forEach(team=>{
+        if(team["Weekly Total $"] === undefined) team["Weekly Total $"] = team["Net $"]
+        if(team["Full Season Prize $"] === undefined) team["Full Season Prize $"] = team["Prize $"]
+        team["Entry Fee"] = 60
+    })
 
-buildTable(data)
-buildDashboard(data)
-buildPointsChart(data)
-buildRaceChart(data)
+    buildTable(data)
+    buildDashboard(data)
+    buildPointsChart(data)
+    buildRaceChart(data)
 
 }
 
 function buildDashboard(data){
 
-const leader=data[0]
+    const leader=data[0]
+    document.getElementById("leader").innerText =
+        leader.Team + " (" + leader.Total + " pts)"
 
-document.getElementById("leader").innerText=
-leader.Team+" ("+leader.Total+" pts)"
+    let moneyLeader=data.reduce((a,b)=>a["Overall $"]>b["Overall $"]?a:b)
+    document.getElementById("moneyLeader").innerText =
+        moneyLeader.Team + " ($" + moneyLeader["Overall $"] + ")"
 
-let moneyLeader=data.reduce((a,b)=>a["Overall $"]>b["Overall $"]?a:b)
+    // Biggest Contributor = team with lowest Overall $ (biggest loss)
+    let worstMoney = Math.min(...data.map(t => t["Overall $"]))
+    let worstTeam = data.filter(t => t["Overall $"] === worstMoney)[0].Team
+    document.getElementById("bestScore").innerText =
+        worstTeam + " ($" + worstMoney + ")"
 
-document.getElementById("moneyLeader").innerText=
-moneyLeader.Team+" $"+moneyLeader["Overall $"]
-
-let bestScore=0
-let bestTeam=""
-
-data.forEach(team=>{
-Object.keys(team).forEach(k=>{
-if(!isNaN(k)){
-if(team[k]>bestScore){
-bestScore=team[k]
-bestTeam=team.Team
-}
-}
-})
-})
-
-document.getElementById("bestScore").innerText=
-bestTeam+" ("+bestScore+")"
-
-let mostWins=data.reduce((a,b)=>a["Weekly Wins"]>b["Weekly Wins"]?a:b)
-
-document.getElementById("mostWins").innerText=
-mostWins.Team+" ("+mostWins["Weekly Wins"]+")"
+    let mostWins=data.reduce((a,b)=>a["Weekly Wins"]>b["Weekly Wins"]?a:b)
+    document.getElementById("mostWins").innerText =
+        mostWins.Team + " (" + mostWins["Weekly Wins"] + ")"
 
 }
 
 function buildTable(data){
 
-const baseHeaders=Object.keys(data[0])
+    const baseHeaders=Object.keys(data[0])
+    const gwColumns=baseHeaders.filter(h=>!isNaN(h))
 
-const gwColumns=baseHeaders.filter(h=>!isNaN(h))
+    const headers=[
+        "Team",
+        ...gwColumns,
+        "Total",
+        "Weekly Wins",
+        "Weekly Total $",
+        "Entry Fee",
+        "Full Season Prize $",
+        "Overall $"
+    ]
 
-const headers=[
-"Team",
-...gwColumns,
-"Total",
-"Weekly Wins",
-"Weekly Total $",
-"Entry Fee",
-"Full Season Prize $",
-"Overall $"
-]
+    // Determine GW winner (only one per week)
+    let gwWinner={}
+    gwColumns.forEach(gw=>{
+        let sorted=[...data].sort((a,b)=>b[gw]-a[gw])
+        gwWinner[gw]=sorted[0].Team
+    })
 
-let gwWinner={}
+    // Build table header
+    let thead="<tr>"
+    headers.forEach(h=>{
+        thead+="<th>"+h+"</th>"
+    })
+    thead+="</tr>"
+    document.querySelector("#leagueTable thead").innerHTML=thead
 
-gwColumns.forEach(gw=>{
-let sorted=[...data].sort((a,b)=>b[gw]-a[gw])
-gwWinner[gw]=sorted[0].Team
-})
+    // Build table body
+    let rows=""
+    data.forEach(team=>{
+        rows+="<tr>"
+        headers.forEach(h=>{
+            let value = team[h] !== undefined ? team[h] : ""
+            let cellClass=""
+            let star=""
 
-let thead="<tr>"
+            if(gwColumns.includes(h) && team.Team===gwWinner[h]){
+                cellClass="gwWinner"
+                star=" ⭐"
+            }
 
-headers.forEach(h=>{
-thead+="<th>"+h+"</th>"
-})
+            // Add $ formatting for money columns
+            if(["Weekly Total $","Full Season Prize $","Entry Fee","Overall $"].includes(h) && value!==""){
+                value="$"+value
+            }
 
-thead+="</tr>"
+            rows+="<td class='"+cellClass+"'>"+value+star+"</td>"
+        })
+        rows+="</tr>"
+    })
 
-document.querySelector("#leagueTable thead").innerHTML=thead
-
-let rows=""
-
-data.forEach(team=>{
-
-rows+="<tr>"
-
-headers.forEach(h=>{
-
-let value=team[h]
-let cellClass=""
-let star=""
-
-if(gwColumns.includes(h) && team.Team===gwWinner[h]){
-cellClass="gwWinner"
-star=" ⭐"
-}
-
-rows+="<td class='"+cellClass+"'>"+(value!==undefined?value:"")+star+"</td>"
-
-})
-
-rows+="</tr>"
-
-})
-
-document.querySelector("#leagueTable tbody").innerHTML=rows
+    document.querySelector("#leagueTable tbody").innerHTML=rows
 
 }
 
 function buildPointsChart(data){
 
-const labels=data.map(t=>t.Team)
-const totals=data.map(t=>t.Total)
+    const labels=data.map(t=>t.Team)
+    const totals=data.map(t=>t.Total)
 
-if(chartInstance) chartInstance.destroy()
+    if(chartInstance) chartInstance.destroy()
 
-chartInstance=new Chart(document.getElementById("pointsChart"),{
-
-type:"bar",
-
-data:{
-labels:labels,
-datasets:[{
-label:"Season Points",
-data:totals
-}]
-}
-
-})
+    chartInstance=new Chart(document.getElementById("pointsChart"),{
+        type:"bar",
+        data:{
+            labels:labels,
+            datasets:[{
+                label:"Season Points",
+                data:totals,
+                backgroundColor:"#4ade80"
+            }]
+        },
+        options:{
+            responsive:true,
+            plugins:{legend:{display:false}}
+        }
+    })
 
 }
 
 function buildRaceChart(data){
 
-const gwColumns=Object.keys(data[0]).filter(x=>!isNaN(x))
+    const gwColumns=Object.keys(data[0]).filter(x=>!isNaN(x))
 
-let datasets=data.map(team=>{
+    let datasets=data.map(team=>{
+        let cumulative=0
+        let points=[]
+        gwColumns.forEach(gw=>{
+            cumulative+=team[gw]
+            points.push(cumulative)
+        })
+        return{
+            label:team.Team,
+            data:points,
+            fill:false,
+            borderColor: "#4ade80",
+            tension:0.2
+        }
+    })
 
-let cumulative=0
-let points=[]
+    if(raceChart) raceChart.destroy()
 
-gwColumns.forEach(gw=>{
-cumulative+=team[gw]
-points.push(cumulative)
-})
+    raceChart=new Chart(document.getElementById("raceChart"),{
+        type:"line",
+        data:{
+            labels:gwColumns,
+            datasets:datasets
+        },
+        options:{
+            responsive:true,
+            plugins:{legend:{position:"bottom"}}
+        }
+    })
 
-return{
-label:team.Team,
-data:points,
-fill:false
 }
 
-})
-
-if(raceChart) raceChart.destroy()
-
-raceChart=new Chart(document.getElementById("raceChart"),{
-
-type:"line",
-
-data:{
-labels:gwColumns,
-datasets:datasets
-}
-
-})
-
-}
-
+// Initial load + refresh every 5 min
 loadData()
-
 setInterval(loadData,300000)
 
 </script>
