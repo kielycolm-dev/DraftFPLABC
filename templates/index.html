@@ -34,7 +34,6 @@ background:#1e293b;
 padding:20px;
 border-radius:10px;
 text-align:center;
-box-shadow:0 6px 12px rgba(0,0,0,0.4);
 }
 
 .card h2{
@@ -45,29 +44,22 @@ color:#94a3b8;
 
 .card p{
 font-size:28px;
-margin:10px 0 0;
-font-weight:bold;
+margin-top:10px;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
 background:#1e293b;
-border-radius:10px;
-overflow:hidden;
 }
 
-th, td{
+th,td{
 padding:10px;
 text-align:center;
 }
 
 th{
 background:#334155;
-}
-
-tr:nth-child(even){
-background:#1f2a3d;
 }
 
 .gwWinner{
@@ -88,27 +80,27 @@ margin-top:30px;
 
 <body>
 
-<h1>🏆 Draft League Prize Tracker</h1>
+<h1>🏆 ABC Draft League Prize Tracker</h1>
 
 <div class="dashboard">
 
 <div class="card">
-<h2>🥇 Leader</h2>
+<h2>Leader</h2>
 <p id="leader"></p>
 </div>
 
 <div class="card">
-<h2>💰 Money Leader</h2>
+<h2>Money Leader</h2>
 <p id="moneyLeader"></p>
 </div>
 
 <div class="card">
-<h2>🔥 Highest GW Score</h2>
+<h2>🔥 Biggest Contributor</h2>
 <p id="bestScore"></p>
 </div>
 
 <div class="card">
-<h2>🏆 Most Weekly Wins</h2>
+<h2>Most Weekly Wins</h2>
 <p id="mostWins"></p>
 </div>
 
@@ -137,126 +129,134 @@ margin-top:30px;
 
 <script>
 
-let chartInstance;
-let raceChart;
+const API_URL="/api/scores"
+
+let chartInstance
+let raceChart
 
 async function loadData(){
 
-const res = await fetch("/api/scores");
-const data = await res.json();
+const res=await fetch(API_URL)
+const data=await res.json()
 
-buildTable(data);
-buildDashboard(data);
-buildPointsChart(data);
-buildRaceChart(data);
+data.forEach(team=>{
+team["Entry Fee"]=60
+})
+
+buildTable(data)
+buildDashboard(data)
+buildPointsChart(data)
+buildRaceChart(data)
 
 }
 
 function buildDashboard(data){
 
-const leader = data[0];
+const leader=data[0]
 
-document.getElementById("leader").innerText =
-leader.Team + " (" + leader.Total + " pts)";
+document.getElementById("leader").innerText=
+leader.Team+" ("+leader.Total+" pts)"
 
-let moneyLeader = data.reduce((a,b)=> a["Overall $"] > b["Overall $"] ? a : b);
+let moneyLeader=data.reduce((a,b)=>a["Overall $"]>b["Overall $"]?a:b)
 
-document.getElementById("moneyLeader").innerText =
-moneyLeader.Team + " $" + moneyLeader["Overall $"];
+document.getElementById("moneyLeader").innerText=
+moneyLeader.Team+" $"+moneyLeader["Overall $"]
 
-let bestScore = 0;
-let bestTeam = "";
+let bestScore=0
+let bestTeam=""
 
 data.forEach(team=>{
 Object.keys(team).forEach(k=>{
 if(!isNaN(k)){
-if(team[k] > bestScore){
-bestScore = team[k];
-bestTeam = team.Team;
+if(team[k]>bestScore){
+bestScore=team[k]
+bestTeam=team.Team
 }
 }
-});
-});
+})
+})
 
-document.getElementById("bestScore").innerText =
-bestTeam + " (" + bestScore + ")";
+document.getElementById("bestScore").innerText=
+bestTeam+" ("+bestScore+")"
 
-let mostWins = data.reduce((a,b)=> a["Weekly Wins"] > b["Weekly Wins"] ? a : b);
+let mostWins=data.reduce((a,b)=>a["Weekly Wins"]>b["Weekly Wins"]?a:b)
 
-document.getElementById("mostWins").innerText =
-mostWins.Team + " (" + mostWins["Weekly Wins"] + ")";
+document.getElementById("mostWins").innerText=
+mostWins.Team+" ("+mostWins["Weekly Wins"]+")"
 
 }
 
 function buildTable(data){
 
-const table = document.getElementById("leagueTable");
+const baseHeaders=Object.keys(data[0])
 
-const headers = Object.keys(data[0]);
+const gwColumns=baseHeaders.filter(h=>!isNaN(h))
 
-const gwColumns = headers.filter(h => !isNaN(h));
+const headers=[
+"Team",
+...gwColumns,
+"Total",
+"Weekly Wins",
+"Weekly Total $",
+"Entry Fee",
+"Full Season Prize $",
+"Overall $"
+]
 
-let gwMax = {};
+let gwWinner={}
 
-gwColumns.forEach(gw => {
+gwColumns.forEach(gw=>{
+let sorted=[...data].sort((a,b)=>b[gw]-a[gw])
+gwWinner[gw]=sorted[0].Team
+})
 
-gwMax[gw] = Math.max(...data.map(t => t[gw]));
+let thead="<tr>"
 
-});
+headers.forEach(h=>{
+thead+="<th>"+h+"</th>"
+})
 
-let thead = "<tr>";
+thead+="</tr>"
 
-headers.forEach(h => {
+document.querySelector("#leagueTable thead").innerHTML=thead
 
-thead += "<th>" + h + "</th>";
+let rows=""
 
-});
+data.forEach(team=>{
 
-thead += "</tr>";
+rows+="<tr>"
 
-table.querySelector("thead").innerHTML = thead;
+headers.forEach(h=>{
 
-let rows = "";
+let value=team[h]
+let cellClass=""
+let star=""
 
-data.forEach(team => {
-
-rows += "<tr>";
-
-headers.forEach(h => {
-
-let value = team[h];
-let cellClass = "";
-let star = "";
-
-if(gwColumns.includes(h) && value == gwMax[h]){
-
-cellClass = "gwWinner";
-star = " ⭐";
-
+if(gwColumns.includes(h) && team.Team===gwWinner[h]){
+cellClass="gwWinner"
+star=" ⭐"
 }
 
-rows += "<td class='"+cellClass+"'>" + value + star + "</td>";
+rows+="<td class='"+cellClass+"'>"+(value!==undefined?value:"")+star+"</td>"
 
-});
+})
 
-rows += "</tr>";
+rows+="</tr>"
 
-});
+})
 
-table.querySelector("tbody").innerHTML = rows;
+document.querySelector("#leagueTable tbody").innerHTML=rows
 
 }
 
 function buildPointsChart(data){
 
-const labels = data.map(t=>t.Team);
-const totals = data.map(t=>t.Total);
+const labels=data.map(t=>t.Team)
+const totals=data.map(t=>t.Total)
 
-if(chartInstance){
-chartInstance.destroy();
-}
+if(chartInstance) chartInstance.destroy()
 
-chartInstance = new Chart(document.getElementById("pointsChart"),{
+chartInstance=new Chart(document.getElementById("pointsChart"),{
 
 type:"bar",
 
@@ -266,47 +266,37 @@ datasets:[{
 label:"Season Points",
 data:totals
 }]
-},
-
-options:{
-plugins:{
-legend:{display:false}
-}
 }
 
-});
+})
 
 }
 
 function buildRaceChart(data){
 
-const gwColumns = Object.keys(data[0]).filter(x=>!isNaN(x));
+const gwColumns=Object.keys(data[0]).filter(x=>!isNaN(x))
 
-let datasets = data.map(team => {
+let datasets=data.map(team=>{
 
-let cumulative = 0;
-let points = [];
+let cumulative=0
+let points=[]
 
-gwColumns.forEach(gw => {
+gwColumns.forEach(gw=>{
+cumulative+=team[gw]
+points.push(cumulative)
+})
 
-cumulative += team[gw];
-points.push(cumulative);
-
-});
-
-return {
-label: team.Team,
-data: points,
+return{
+label:team.Team,
+data:points,
 fill:false
-};
-
-});
-
-if(raceChart){
-raceChart.destroy();
 }
 
-raceChart = new Chart(document.getElementById("raceChart"),{
+})
+
+if(raceChart) raceChart.destroy()
+
+raceChart=new Chart(document.getElementById("raceChart"),{
 
 type:"line",
 
@@ -315,13 +305,13 @@ labels:gwColumns,
 datasets:datasets
 }
 
-});
+})
 
 }
 
-loadData();
+loadData()
 
-setInterval(loadData,300000);
+setInterval(loadData,300000)
 
 </script>
 
